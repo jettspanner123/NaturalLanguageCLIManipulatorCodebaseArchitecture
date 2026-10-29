@@ -7,6 +7,7 @@ NaturalLanguageCLIManipulatorCoreMSC/project/project/
 # Node / TypeScript
 NaturalLanguageCLIManipulatorUserInterfaceMSC/node_modules/
 NaturalLanguageCLIManipulatorUserInterfaceMSC/dist/
+NaturalLanguageCLIManipulatorUserInterfaceMSC/Source/IPC/Generated/
 npm-debug.log*
 
 # Secrets — never commit these, even though the real one lives in ~/.Amy/, not here

@@ -3,9 +3,11 @@ syntax = "proto3";
 package amy.ipc;
 
 // The IPC Shared Protocol - the single source of truth for every message
-// Core and the User Interface process exchange over stdio. See CONTEXT.md
-// for the vocabulary (Confirmation, Access Request, Clarification, Command
-// Echo) and ARCHITECTURE.md section 5 for how each flow works end to end.
+// Core and the User Interface process exchange over their loopback TCP
+// socket (see ARCHITECTURE.md section 1 for why it's a socket and not
+// stdio). See CONTEXT.md for the vocabulary (Confirmation, Access Request,
+// Clarification, Command Echo) and ARCHITECTURE.md section 5 for how each
+// flow works end to end.
 //
 // Every message on the wire is one of these two envelopes, framed as a
 // 4-byte big-endian length prefix followed by that many bytes of the

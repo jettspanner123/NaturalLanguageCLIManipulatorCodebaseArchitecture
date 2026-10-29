@@ -4,31 +4,36 @@
 
 ## 1. Process Architecture
 
-Amy ships as a single CLI install (`npm install -g`), but internally runs as **two cooperating processes** per invocation, talking over stdio:
+Amy ships as a single CLI install (`npm install -g`), but internally runs as **two cooperating processes** per invocation, talking over a dedicated local socket:
 
 ```
-┌─────────────────────────────┐        stdio        ┌──────────────────────────────┐
-│   Core (Scala, JVM,         │ <──────────────────> │   User Interface (TypeScript, │
-│   GraalVM native-image)     │   IPC messages        │   Node.js)                    │
-│                              │                       │                               │
-│  • Receives the Request      │                       │  • Renders everything the     │
-│  • Runs the reasoning loop   │                       │    user sees                  │
-│  • Decides & executes Steps  │                       │  • Collects user input         │
-│    via Tool Calls            │                       │    (Confirmation, Access       │
-│  • Risk Judgment / Safety    │                       │    Request answers,            │
-│    Net / Permission checks   │                       │    Clarification answers)      │
-│  • Writes Command Execution  │                       │  • Inline rendering by          │
-│    Log + Session Summary     │                       │    default; full-screen for     │
-│  • Calls Gemini (reasoning)  │                       │    large diffs / pickers         │
-│    and Ollama (embeddings)   │                       │                               │
-└─────────────────────────────┘                       └──────────────────────────────┘
+┌─────────────────────────────┐   loopback TCP socket  ┌──────────────────────────────┐
+│   Core (Scala, JVM,         │ <──────────────────────> │   User Interface (TypeScript, │
+│   GraalVM native-image)     │   IPC messages            │   Node.js)                    │
+│                              │                           │                               │
+│  • Receives the Request      │                           │  • Renders everything the     │
+│  • Runs the reasoning loop   │                           │    user sees                  │
+│  • Decides & executes Steps  │                           │  • Collects user input         │
+│    via Tool Calls            │                           │    (Confirmation, Access       │
+│  • Risk Judgment / Safety    │                           │    Request answers,            │
+│    Net / Permission checks   │                           │    Clarification answers)      │
+│  • Writes Command Execution  │                           │  • Inline rendering by          │
+│    Log + Session Summary     │                           │    default; full-screen for     │
+│  • Calls Gemini (reasoning)  │                           │    large diffs / pickers         │
+│    and Ollama (embeddings)   │                           │                               │
+└─────────────────────────────┘                           └──────────────┬───────────────┘
+                                                                           │ inherited stdin/stdout/stderr
+                                                                           ▼
+                                                                    the real terminal
 ```
 
-**Why two processes instead of one runtime:** Scala (JVM, compiled to a native binary via GraalVM native-image) was chosen specifically — not Scala.js — for the agent engine. TypeScript/Node was chosen specifically for the terminal rendering layer, for its CLI UI ecosystem. Since these are two genuinely different runtimes, they run as separate OS processes and communicate over stdio rather than sharing memory or source.
+**Why two processes instead of one runtime:** Scala (JVM, compiled to a native binary via GraalVM native-image) was chosen specifically — not Scala.js — for the agent engine. TypeScript/Node was chosen specifically for the terminal rendering layer, for its CLI UI ecosystem. Since these are two genuinely different runtimes, they run as separate OS processes rather than sharing memory or source.
 
-**What crosses the boundary:** Core never writes directly to the terminal and never reads stdin directly — it sends the UI process structured messages ("show this Confirmation prompt with these options", "render this line of output", "ask this Clarification question"), and the UI process sends back structured responses ("user chose option 2", "user typed: ..."). The shared message schema for this protocol lives in `…SharedNMSC/`, implemented independently on each side (no shared compiled code is possible across a JVM/Node boundary).
+**Why a socket and not stdio between the two processes:** the UI process needs direct, unmediated access to the real terminal — reading raw arrow-key/vim-key presses, redrawing lines, full-screen views. That only works if the UI's own stdin/stdout *are* the terminal (a TTY). If they were instead piped to Core for IPC, the UI could neither draw to the real screen nor read raw keystrokes from the real keyboard — stdio can't simultaneously be "the terminal" and "a data pipe to another process." So the UI process **inherits stdin/stdout/stderr directly from the terminal** (exactly like any normal interactive CLI tool), and Core↔UI structured messages travel over a **separate loopback TCP socket** instead: Core opens a `ServerSocket` on `127.0.0.1` with an OS-assigned port, passes that port to the UI process as a startup argument, and the UI connects as a client. Using a plain loopback TCP socket (rather than a Windows named pipe / Unix domain socket) keeps the transport code identical across Windows, macOS, and Linux.
 
-**Launch**: the `amy` command is a thin launcher. It starts the Core process, which in turn spawns the UI process and attaches to it over stdio pipes; the UI process does not run standalone. On first run (no config under `~/.Amy/`), Core routes straight into Setup before processing any Request.
+**What crosses the socket:** Core sends the UI structured messages ("show this Confirmation prompt with these options", "render this line of output", "ask this Clarification question"), and the UI sends back structured responses ("user chose option 2", "user typed: ..."). None of the actual terminal rendering or key-reading goes over this socket — only the semantic content of what to show and what was answered. The shared message schema lives in `…SharedNMSC/`, implemented independently on each side (no shared compiled code is possible across a JVM/Node boundary) — see section 5 for the on-the-wire framing.
+
+**Launch**: the `amy` command is a thin launcher that starts the Core process. Core opens its socket server, then spawns the UI process (inheriting the real terminal's stdio, passed the socket's port), which connects back to Core over that socket; the UI process does not run standalone. On first run (no config under `~/.Amy/`), Core routes straight into Setup before processing any Request.
 
 ## 2. Tech Stack
 

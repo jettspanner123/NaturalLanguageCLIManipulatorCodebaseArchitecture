@@ -13,7 +13,17 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "tsc",
+    "generate:ipc": "protoc --ts_out=Source/IPC/Generated --proto_path=../NaturalLanguageCLIManipulatorSharedNMSC/IPCSharedProtocols ../NaturalLanguageCLIManipulatorSharedNMSC/IPCSharedProtocols/AmyIpc.proto",
+    "build": "npm run generate:ipc && tsc",
     "start": "node dist/Main.js"
+  },
+  "dependencies": {
+    "@protobuf-ts/runtime": "^2.11.1",
+    "@protobuf-ts/runtime-rpc": "^2.11.1"
+  },
+  "devDependencies": {
+    "@protobuf-ts/plugin": "^2.11.1",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
   }
 }
