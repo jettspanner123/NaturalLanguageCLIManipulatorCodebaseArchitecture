@@ -1,0 +1,20 @@
+# Scala / sbt
+NaturalLanguageCLIManipulatorCoreMSC/target/
+NaturalLanguageCLIManipulatorCoreMSC/project/target/
+NaturalLanguageCLIManipulatorCoreMSC/project/project/
+*.class
+
+# Node / TypeScript
+NaturalLanguageCLIManipulatorUserInterfaceMSC/node_modules/
+NaturalLanguageCLIManipulatorUserInterfaceMSC/dist/
+npm-debug.log*
+
+# Secrets — never commit these, even though the real one lives in ~/.Amy/, not here
+.env
+*.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
