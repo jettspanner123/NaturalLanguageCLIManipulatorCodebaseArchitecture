@@ -41,8 +41,11 @@ Amy ships as a single CLI install (`npm install -g`), but internally runs as **t
 | Vector storage / similarity | Flat local files, cosine similarity computed in-process (no vector DB, no server) |
 | Config format | YAML (human-editable: permissions, settings) |
 | Log / history format | XML (machine-generated: Command Execution Logs, Session Summaries) |
-| Distribution | `npm install -g` |
+| IPC contract | Protocol Buffers (`.proto`) — ScalaPB on the Core side, protobuf-ts on the UI side |
+| Distribution | `npm install -g` (npm package name: `amy-cli`) |
 | Platforms | Windows, macOS, Linux |
+
+**Build identities**: Core's `build.sbt` → `name := "amy-core"`, `organization := "com.jettspanner"`, Scala 3 (targeting the current 3.3.x LTS line). UI's `package.json` → `name: "amy-cli"`, targeting the latest Node.js LTS, built/managed with npm.
 
 ## 3. Repository Structure
 
@@ -57,37 +60,42 @@ NaturalLanguageCLIManipulatorCodebaseArchitecture/            (repo root)
 │
 ├── NaturalLanguageCLIManipulatorCoreMSC/                      (Scala — agent engine)
 │   ├── Source/
-│   │   ├── Agent/            — Request → Step planning; the reasoning loop driving Gemini
-│   │   ├── Tools/
-│   │   │   ├── Structured/   — one file per Structured Tool (e.g. GitCommitTool.scala,
+│   │   ├── AgenticReasoning/ — Request → Step planning; the reasoning loop driving Gemini
+│   │   ├── Apparatuses/
+│   │   │   └── Structured/   — one file per Structured Tool (e.g. GitCommitTool.scala,
 │   │   │   │                   CompressFolderTool.scala, SummarizeFileTool.scala,
 │   │   │   │                   AskQuestionTool.scala)
-│   │   │   └── ShellFallbackTool.scala
-│   │   ├── Safety/           — Risk Judgment, the Safety Net pattern list, Command Echo
-│   │   ├── Permissions/      — Permission Grant store (reads/writes DirectoryPermissions.yaml),
+│   │   │   (ShellFallbackTool.scala lives directly under Apparatuses/)
+│   │   ├── AISafetyLayer/    — Risk Judgment, the Safety Net pattern list, Command Echo
+│   │   ├── GuardRails/       — Permission Grant store (reads/writes DirectoryPermissions.yaml),
 │   │   │                       Access Request flow
 │   │   ├── Logging/          — Command Execution Log writer (XML)
-│   │   ├── Memory/           — Session Summary writer, Ollama embedding client,
+│   │   ├── MemoryLane/       — Session Summary writer, Ollama embedding client,
 │   │   │                       cosine-similarity Recall
-│   │   ├── Setup/            — first-run + `amy setup` onboarding wizard logic
-│   │   ├── Ipc/              — stdio protocol implementation, Core side
-│   │   └── Main.scala
+│   │   ├── OnboardingInstallation/ — first-run + `amy setup` onboarding wizard logic
+│   │   ├── IPC/              — generated ScalaPB code + protocol handling, Core side
+│   │   └── CoreEntryPoint.scala
 │   ├── Test/
-│   └── build.sbt, project/   — sbt build files (repoints default source dirs to Source/ and Test/)
+│   ├── build.sbt
+│   └── project/              — sbt's own bootstrap folder (build.properties, plugins.sbt);
+│                               this name is an sbt hard requirement, not a style choice —
+│                               see the Naming Exceptions note in CODING-RULES.md
 │
 ├── NaturalLanguageCLIManipulatorUserInterfaceMSC/             (TypeScript — terminal UI)
 │   ├── Source/
-│   │   ├── Prompts/          — ConfirmationPrompt.ts, AccessRequestPrompt.ts,
+│   │   ├── Promptomates/     — ConfirmationPrompt.ts, AccessRequestPrompt.ts,
 │   │   │                       ClarificationPrompt.ts (arrow-key + vim-key navigation)
-│   │   ├── Rendering/        — InlineRenderer.ts, FullScreenRenderer.ts
-│   │   ├── Ipc/              — stdio protocol implementation, UI side
+│   │   ├── UIRenderers/      — InlineRenderer.ts, FullScreenRenderer.ts
+│   │   ├── IPC/              — generated protobuf-ts code + protocol handling, UI side
 │   │   └── Main.ts
 │   ├── Test/
 │   └── package.json, tsconfig.json
 │
 ├── NaturalLanguageCLIManipulatorSharedNMSC/                   (cross-process contract)
-│   └── IpcProtocol/          — the message schema both processes implement independently
-│                               (message types/shapes, not shared compiled code)
+│   └── IPCSharedProtocols/
+│       └── AmyIpc.proto      — the single source of truth for every IPC message shape;
+│                               ScalaPB generates Core's types, protobuf-ts generates the
+│                               UI's types from this one file
 │
 └── NaturalLanguageCLIManipulatorAgentDocumentationNMSC/       (docs, PRDs, reference material)
     ├── ReferenceCodingRules.md   — verbatim copy of the original Assetsphere CODING-RULES.md
@@ -132,6 +140,6 @@ Not part of the repository — created on the machine `amy` is installed on, sha
 
 ## 6. Open Implementation Details (to settle during build, not blocking this document)
 
-- Exact IPC wire format (e.g. newline-delimited JSON over stdio) — functionally decided (stdio, structured messages) but the precise framing/schema will be nailed down in `…SharedNMSC/IpcProtocol/` as the first thing built.
+- The actual set of IPC message types (ShowConfirmation, AccessRequest, Clarification, CommandEcho, etc.) in `AmyIpc.proto` — the format (Protocol Buffers) and location (`…SharedNMSC/IPCSharedProtocols/AmyIpc.proto`) are decided; only the real message definitions remain, currently just a placeholder `Ping` message.
 - Exact Safety Net pattern list (which commands/flags are hardcoded as always-confirm).
-- Exact sbt configuration repointing `Compile / scalaSource` and `Test / scalaSource` to `Source/` and `Test/`.
+- `sbt-native-image` / `sbt-protoc` / ScalaPB plugin versions in `project/plugins.sbt` are placeholders — verify against current releases before the first real build.

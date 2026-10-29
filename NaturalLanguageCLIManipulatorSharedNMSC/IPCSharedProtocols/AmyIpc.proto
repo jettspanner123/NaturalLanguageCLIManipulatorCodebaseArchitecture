@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package amy.ipc;
+
+// Placeholder message. The real IPC Shared Protocol (ShowConfirmation,
+// AccessRequest, Clarification, CommandEcho, etc. - see CONTEXT.md and
+// ARCHITECTURE.md section 5) will be designed here before Core and the
+// UI process are implemented against this contract.
+message Ping {
+  string message = 1;
+}

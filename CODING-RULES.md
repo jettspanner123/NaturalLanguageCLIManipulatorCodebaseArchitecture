@@ -27,17 +27,17 @@ Terms capitalized below (Tool, Structured Tool, Shell Fallback, Risk Judgment, S
 
 ## Naming & File Structure
 
-- PascalCase for every folder and file in this repository, with the sole exceptions of filenames mandated by an external tool/ecosystem (`package.json`, `tsconfig.json`, `build.sbt`, `.gitignore`, `.env`, `README.md`, `LICENSE`) and the `amy` command itself, which stays lowercase.
+- PascalCase for every folder and file in this repository, with the sole exceptions of filenames/foldernames mandated by an external tool/ecosystem (`package.json`, `tsconfig.json`, `build.sbt`, `project/` — sbt's own bootstrap folder, required verbatim so sbt can find `build.properties`/`plugins.sbt` before it even reads `build.sbt` — `.gitignore`, `.env`, `README.md`, `LICENSE`) and the `amy` command itself, which stays lowercase.
 - The four top-level folders each own one responsibility. Cross the boundary between `…CoreMSC` and `…UserInterfaceMSC` only through the IPC contract defined in `…SharedNMSC`:
   - `NaturalLanguageCLIManipulatorCoreMSC/` — the Scala agent engine. No UI rendering code lives here.
   - `NaturalLanguageCLIManipulatorUserInterfaceMSC/` — the TypeScript terminal UI. No agent/reasoning logic lives here — it renders what Core sends it and forwards user input back.
-  - `NaturalLanguageCLIManipulatorSharedNMSC/` — the IPC message contract both processes implement independently. Core (JVM) and the UI (Node) cannot literally share compiled source, so this folder holds the agreed-upon schema/types, not shared code.
+  - `NaturalLanguageCLIManipulatorSharedNMSC/` — the IPC message contract (`IPCSharedProtocols/AmyIpc.proto`, Protocol Buffers) both processes generate typed code from independently. Core (JVM) and the UI (Node) cannot literally share compiled source, so this folder holds the single source-of-truth schema, not shared code.
   - `NaturalLanguageCLIManipulatorAgentDocumentationNMSC/` — documentation, PRDs, ADRs, reference material.
-- Inside each process's `Source/` folder, group files by the concept they implement (e.g. `Tools/`, `Safety/`, `Permissions/`, `Logging/`, `Memory/`, `Ipc/` on the Core side; `Prompts/`, `Rendering/`, `Ipc/` on the UI side) — not by technical layer.
+- Inside each process's `Source/` folder, group files by the concept they implement (`AgenticReasoning/`, `Apparatuses/`, `AISafetyLayer/`, `GuardRails/`, `Logging/`, `MemoryLane/`, `OnboardingInstallation/`, `IPC/` on the Core side; `Promptomates/`, `UIRenderers/`, `IPC/` on the UI side) — not by technical layer.
 
 ## Tools (Core)
 
-- Every Tool — Structured or the Shell Fallback — lives under `Tools/` and implements exactly one operation.
+- Every Tool — Structured or the Shell Fallback — lives under `Apparatuses/` and implements exactly one operation.
 - A Structured Tool's parameters must be fully typed; never an untyped bag of strings.
 - Only the Shell Fallback Tool is permitted to execute an arbitrary command line. Every Structured Tool must perform its operation through its own direct, typed implementation rather than shelling out.
 

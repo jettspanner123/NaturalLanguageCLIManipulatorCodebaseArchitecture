@@ -1,0 +1,19 @@
+{
+  "name": "amy-cli",
+  "version": "0.1.0",
+  "description": "Amy - a natural-language command-line agent (terminal UI process)",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/Main.js",
+  "bin": {
+    "amy": "dist/Main.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/Main.js"
+  }
+}
