@@ -2,10 +2,87 @@ syntax = "proto3";
 
 package amy.ipc;
 
-// Placeholder message. The real IPC Shared Protocol (ShowConfirmation,
-// AccessRequest, Clarification, CommandEcho, etc. - see CONTEXT.md and
-// ARCHITECTURE.md section 5) will be designed here before Core and the
-// UI process are implemented against this contract.
-message Ping {
-  string message = 1;
+// The IPC Shared Protocol - the single source of truth for every message
+// Core and the User Interface process exchange over stdio. See CONTEXT.md
+// for the vocabulary (Confirmation, Access Request, Clarification, Command
+// Echo) and ARCHITECTURE.md section 5 for how each flow works end to end.
+//
+// Every message on the wire is one of these two envelopes, framed as a
+// 4-byte big-endian length prefix followed by that many bytes of the
+// serialized envelope (see MessageFraming on both sides).
+//
+// This is a v0, intentionally minimal set - it will grow as more of the
+// Agent (reasoning, tools, logging, memory) is built.
+
+message CoreToUserInterface {
+  oneof payload {
+    CommandEcho command_echo = 1;
+    ConfirmationRequest confirmation_request = 2;
+    AccessRequest access_request = 3;
+    ClarificationRequest clarification_request = 4;
+    OutputLine output_line = 5;
+  }
+}
+
+message UserInterfaceToCore {
+  oneof payload {
+    ConfirmationResponse confirmation_response = 1;
+    AccessResponse access_response = 2;
+    ClarificationResponse clarification_response = 3;
+  }
+}
+
+// The exact command text Amy is about to run - always sent before a shell
+// command executes, regardless of its Risk Judgment outcome.
+message CommandEcho {
+  string command = 1;
+}
+
+// Sent when a Step's Risk Judgment (or the Safety Net) flags a command as
+// needing the user's explicit go-ahead before it runs.
+message ConfirmationRequest {
+  string command = 1;
+  string reason = 2;
+}
+
+message ConfirmationResponse {
+  bool approved = 1;
+}
+
+enum AccessDecision {
+  ACCESS_DECISION_UNSPECIFIED = 0;
+  ALLOW_ONCE = 1;
+  ALWAYS_ALLOW_FOLDER = 2;
+  ALWAYS_ALLOW_FOLDER_AND_SUBFOLDERS = 3;
+  DENY = 4;
+}
+
+// Raised when a Step needs to touch a directory with no existing
+// Permission Grant covering it.
+message AccessRequest {
+  string directory = 1;
+  string reason = 2;
+}
+
+message AccessResponse {
+  AccessDecision decision = 1;
+}
+
+// The ask_question Tool's wire representation. An empty `choices` list
+// means free-text input; a non-empty list means multiple choice.
+message ClarificationRequest {
+  string question = 1;
+  repeated string choices = 2;
+}
+
+message ClarificationResponse {
+  string answer_text = 1;
+  // -1 when the answer was free text rather than a choice selection.
+  int32 selected_choice_index = 2;
+}
+
+// Plain inline output Core wants rendered as-is (not a prompt expecting a
+// response).
+message OutputLine {
+  string text = 1;
 }
