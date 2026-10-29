@@ -18,3 +18,11 @@ Compile / PB.targets := Seq(
 )
 
 libraryDependencies += "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
+
+// `sbt run` forks CoreEntryPoint into its own JVM by default, which does
+// NOT connect that forked process's stdin to sbt's own stdin unless this
+// is set - without it, the User Interface process (spawned via
+// ProcessBuilder.inheritIO() inside CoreEntryPoint) inherits a stdin that
+// was never actually connected to the real terminal, so keystrokes never
+// arrive no matter what's typed or piped in.
+run / connectInput := true
