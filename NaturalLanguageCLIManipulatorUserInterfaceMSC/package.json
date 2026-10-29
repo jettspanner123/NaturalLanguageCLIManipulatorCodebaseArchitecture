@@ -13,7 +13,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "generate:ipc": "protoc --ts_out=Source/IPC/Generated --proto_path=../NaturalLanguageCLIManipulatorSharedNMSC/IPCSharedProtocols ../NaturalLanguageCLIManipulatorSharedNMSC/IPCSharedProtocols/AmyIpc.proto",
+    "generate:ipc": "protoc --ts_out=Source/IPC/Generated --proto_path=../NaturalLanguageCLIManipulatorSharedNMSC/IPCSharedProtocols --proto_path=../NaturalLanguageCLIManipulatorSharedNMSC/Vendor ../NaturalLanguageCLIManipulatorSharedNMSC/IPCSharedProtocols/AmyIpc.proto",
     "build": "npm run generate:ipc && tsc",
     "start": "node dist/Main.js"
   },

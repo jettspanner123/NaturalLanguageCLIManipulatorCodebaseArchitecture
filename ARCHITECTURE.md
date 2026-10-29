@@ -143,8 +143,13 @@ Not part of the repository — created on the machine `amy` is installed on, sha
 
 **Onboarding**: on launch, Core checks for `~/.Amy/Configurations/`. If absent, it runs Setup (grant permissions, provide/validate the Gemini key, check for Ollama) before processing the Request. `amy setup` re-enters this flow explicitly at any time.
 
-## 6. Open Implementation Details (to settle during build, not blocking this document)
+## 6. Status
 
-- The actual set of IPC message types (ShowConfirmation, AccessRequest, Clarification, CommandEcho, etc.) in `AmyIpc.proto` — the format (Protocol Buffers) and location (`…SharedNMSC/IPCSharedProtocols/AmyIpc.proto`) are decided; only the real message definitions remain, currently just a placeholder `Ping` message.
+**Working (verified end to end, 2026-10-29)**: the loopback socket, the real `AmyIpc.proto` v0 message set (`CommandEcho`, `ConfirmationRequest`/`Response`, `AccessRequest`/`Response`, `ClarificationRequest`/`Response`, `OutputLine`), length-prefixed framing on both sides, Core spawning the UI process with inherited terminal stdio, and a full Confirmation round trip (Core asks, UI prompts with a raw y/n keypress, Core gets the answer and sends a follow-up `OutputLine`). None of this involves real Agent reasoning yet — `CoreEntryPoint.scala` sends one hardcoded `ConfirmationRequest` to prove the pipe works.
+
+**Open Implementation Details (to settle during further build, not blocking this document)**:
+
+- The Access Request and Clarification flows (message types exist in `AmyIpc.proto`; no UI prompt or Core-side logic uses them yet).
 - Exact Safety Net pattern list (which commands/flags are hardcoded as always-confirm).
 - `sbt-native-image` / `sbt-protoc` / ScalaPB plugin versions in `project/plugins.sbt` are placeholders — verify against current releases before the first real build.
+- Real path resolution for locating the UI's `dist/Main.js` from Core (`UserInterfaceChannel.start()` currently assumes a relative dev-layout path, `../NaturalLanguageCLIManipulatorUserInterfaceMSC/dist/Main.js`) — needs proper resolution once this is packaged for distribution.
